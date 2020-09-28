@@ -13,6 +13,7 @@ linear <- as.character(args[6]) # 1 if linear
 num_cv <- as.character(args[7]) # 1 if linear
 which_experiment <- as.double(args[8]) # 1 or 2
 
+print(paste0("Beginning with num_cv = ", num_cv))
 # ntrain <- 50
 # ncandidate <- 2000
 # sigma <- 2
@@ -21,7 +22,7 @@ which_experiment <- as.double(args[8]) # 1 or 2
 # n_seqential <- 1
 # which_experiment <- 2
 n <- ntrain + ncandidate
-set.seed(1)
+set.seed(num_cv)
 p <- 5
 
 # Experiment

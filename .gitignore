@@ -63,5 +63,9 @@ env/
 *.zip
 *.Rproj
 
-# BCF example script
-/bcf/rev.simus.R
+# cluster files
+*.sub
+*.sh
+*.e*
+*.o*
+integrationMainParallel.R 

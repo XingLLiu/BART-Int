@@ -53,6 +53,10 @@ fillProbabilityForNode <- function(oneTree, cutPoints, cut, measure)
       normalizingConst <- pmvnorm(cut[1, oneTree$splitVar], cut[2, oneTree$splitVar], mean = 0.5, sigma = 1)
       oneTree$leftChild$probability <- pmvnorm(cut[1, oneTree$splitVar], decisionRule, sigma = 1) / normalizingConst
       oneTree$rightChild$probability <- 1 - oneTree$leftChild$probability
+    } else if (measure == "exponential") {
+      normalizingConst <- pexp(cut[1, oneTree$splitVar]) - pexp(cut[2, oneTree$splitVar])
+      oneTree$leftChild$probability <- pexp(decisionRule) - pexp(cut[1, oneTree$splitVar]) / normalizingConst
+      oneTree$rightChild$probability <- 1 - oneTree$leftChild$probability      
     }
 
     cut[, oneTree$splitVar] = c(0, decisionRule)
@@ -150,6 +154,10 @@ singleTreeSum <- function(treeNum, model, drawNum, dim, measure)
 {
   cutPoints <- dbarts:::createCutPoints(model$fit)
   cut <- array(c(0, 1), c(2, dim))
+  
+  if (measure %in% c("exponential")) {
+    cut <- array(c(0, Inf), c(2, dim))
+  }
 
   treeList <- getTree(model$fit, 1, drawNum, treeNum)
 
@@ -250,7 +258,8 @@ BARTBQSequential <- function(dim, trainX, trainY, numNewTraining, FUN, sequentia
   # first build BART and scale mean and standard deviation
   sink("/dev/null")
   # model <- bart(trainData[,1:dim], trainData[,dim+1], keeptrees=TRUE, keepevery=5L, nskip=500, ndpost=1500, ntree=50, k = 2)
-  model <- bart(trainData[, 1:dim], trainData[, dim + 1], keeptrees = TRUE, keepevery = 5L, nskip = 500, ndpost = 1500, ntree = 200, k = 2)
+  # sigest = 0.0001 ensures that there is almost no noise
+  model <- bart(trainData[, 1:dim], trainData[, dim + 1], keeptrees = TRUE, keepevery = 5L, nskip = 500, ndpost = 1500, ntree = 200, k = 2, sigest=0.0001)
   sink()
   # obtain posterior samples
   integrals <- sampleIntegrals(model, dim, measure)
@@ -275,7 +284,8 @@ BARTBQSequential <- function(dim, trainX, trainY, numNewTraining, FUN, sequentia
     ymax <- max(trainData[, (dim + 1)])
     # first build BART and scale mean and standard deviation
     sink("/dev/null")
-    model <- bart(trainData[, 1:dim], trainData[, dim + 1], keeptrees = TRUE, keepevery = 5L, nskip = 500, ndpost = 1500, ntree = 200, k = 2)
+    # sigest = 0.0001 ensures that there is almost no noise
+    model <- bart(trainData[, 1:dim], trainData[, dim + 1], keeptrees = TRUE, keepevery = 5L, nskip = 500, ndpost = 1500, ntree = 200, k = 2, sigest=0.0001)
     # model <- bart(trainData[,1:dim], trainData[,dim+1], keeptrees=TRUE, keepevery=5L, nskip=500, ndpost=1500, ntree=50, k = 2)
     # model <- bart(trainData[,1:dim], trainData[,dim+1], keeptrees=TRUE, keepevery=20L, nskip=1000, ndpost=2000)
     # model <- bart(trainData[,1:dim], trainData[,dim+1], keeptrees=TRUE, keepevery=20L, nskip=1000, ndpost=10000, ntree=50, k = 2)
@@ -295,14 +305,19 @@ BARTBQSequential <- function(dim, trainX, trainY, numNewTraining, FUN, sequentia
     candidateSetNum <- 100
     if (measure == "uniform") {
       candidateSet <- replicate(dim, runif(candidateSetNum))
+      weights <- 1
     } else if (measure == "gaussian") {
       candidateSet <- replicate(dim, rtnorm(candidateSetNum, mean = 0.5, lower = 0, upper = 1))
+      weights <- dtnorm(candidateSet, mean=0.5, lower = 0, upper = 1)
+    } else if (measure == "exponential") {
+      candidateSet <- replicate(dim, rexp(candidateSetNum))
+      weights <- dexp(candidateSet)
     }
 
     # predict the values
     fValues <- predict(model, candidateSet)
     if (sequential) {
-      var <- colVars(fValues)
+      var <- colVars(fValues) * weights
       index <- sample(which(var == max(var)), 1)
     }
     else {
@@ -349,7 +364,8 @@ BART_posterior <- function(dim, trainX, trainY, numNewTraining, FUN, sequential,
     ymax <- max(trainData[, (dim + 1)])
     # first build BART and scale mean and standard deviation
     sink("/dev/null")
-    model <- bart(trainData[, 1:dim], trainData[, dim + 1], keeptrees = TRUE, keepevery = 5L, nskip = 1000, ndpost = 5000, ntree = 50, k = 2)
+    # sigest = 0.0001 ensures that there is almost no noise
+    model <- bart(trainData[, 1:dim], trainData[, dim + 1], keeptrees = TRUE, keepevery = 5L, nskip = 1000, ndpost = 5000, ntree = 50, k = 2, sigest = 0.0001)
     sink()
     # obtain posterior samples
     integrals <- sampleIntegrals(model, dim, measure)
@@ -361,6 +377,8 @@ BART_posterior <- function(dim, trainX, trainY, numNewTraining, FUN, sequential,
       candidateSet <- replicate(dim, runif(candidateSetNum))
     } else if (measure == "gaussian") {
       candidateSet <- replicate(dim, rtnorm(candidateSetNum, mean = 0.5, lower = 0, upper = 1))
+    } else if (measure == "exponential") {
+      candidateSet <- replicate(dim, rexp(candidateSetNum))
     }
 
     # predict the values
