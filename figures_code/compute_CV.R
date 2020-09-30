@@ -30,7 +30,6 @@ RMSE <- function(x, y){
 }
 
 
-# for (i in c(1:7)){
 for (i in c(7)){
   for (j in c(1)){
     meanabsMape <- 0
@@ -49,9 +48,6 @@ for (i in c(7)){
     # } else if (whichGenz == 3 & dim == 3) {
     #   next
     # }
-    if (whichGenz == 3) { 
-      next
-    }
     # Find Genz function
     if (whichGenz == 1) { genzFunctionName <-  "cont" }
     if (whichGenz == 2) { genzFunctionName <-  "copeak" }
@@ -113,6 +109,8 @@ for (i in c(7)){
   cat(genzFunctionName, "done", '\n')
 }
 
+print(bestMethod)
+print(mapeValues)
 write.csv(bestMethod, file = "results/genz/bestMethods.csv")
 write.csv(resultsAll, file = "results/genz/allEstimates.csv")
 write.csv(mapeValues, file = "results/genz/mapeValues.csv")
