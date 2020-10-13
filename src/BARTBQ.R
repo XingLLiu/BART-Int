@@ -54,17 +54,18 @@ fillProbabilityForNode <- function(oneTree, cutPoints, cut, measure)
       oneTree$leftChild$probability <- pmvnorm(cut[1, oneTree$splitVar], decisionRule, sigma = 1) / normalizingConst
       oneTree$rightChild$probability <- 1 - oneTree$leftChild$probability
     } else if (measure == "exponential") {
-      normalizingConst <- pexp(cut[1, oneTree$splitVar]) - pexp(cut[2, oneTree$splitVar])
-      oneTree$leftChild$probability <- pexp(decisionRule) - pexp(cut[1, oneTree$splitVar]) / normalizingConst
+      normalizingConst <- pexp(cut[2, oneTree$splitVar]) - pexp(cut[1, oneTree$splitVar])
+      oneTree$leftChild$probability <- (pexp(decisionRule) - pexp(cut[1, oneTree$splitVar])) / normalizingConst
       oneTree$rightChild$probability <- 1 - oneTree$leftChild$probability      
     }
 
     cut[, oneTree$splitVar] = c(0, decisionRule)
-
     fillProbabilityForNode(oneTree$leftChild, cutPoints, cut, measure)
-
+    
     cut[, oneTree$splitVar] = c(decisionRule, 1)
-
+    if (measure == "exponential") {
+      cut[, oneTree$splitVar] = c(decisionRule, Inf)
+    }
     fillProbabilityForNode(oneTree$rightChild, cutPoints, cut, measure)
 
   } else if (is.null(oneTree$probability)) {
